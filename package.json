@@ -1,15 +1,15 @@
 {
-  "name": "god-tibo-text",
+  "name": "codex-cli-text-generator",
   "version": "0.1.0",
   "description": "Bulk text generation through Codex CLI and your existing ChatGPT login",
   "author": "Nathan Kim",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/nathankim0/god-tibo-text.git"
+    "url": "git+https://github.com/nathankim0/codex-cli-text-generator.git"
   },
-  "homepage": "https://github.com/nathankim0/god-tibo-text#readme",
+  "homepage": "https://github.com/nathankim0/codex-cli-text-generator#readme",
   "bugs": {
-    "url": "https://github.com/nathankim0/god-tibo-text/issues"
+    "url": "https://github.com/nathankim0/codex-cli-text-generator/issues"
   },
   "type": "module",
   "main": "./src/index.js",
@@ -17,12 +17,14 @@
     ".": "./src/index.js"
   },
   "bin": {
-    "gtt": "./src/cli.js"
+    "codex-text": "./src/cli.js"
   },
   "files": [
     "src/",
+    "assets/",
     "LICENSE",
-    "README.md"
+    "README.md",
+    "README.ko.md"
   ],
   "scripts": {
     "test": "node --test",

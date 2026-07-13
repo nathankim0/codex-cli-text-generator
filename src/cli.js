@@ -9,11 +9,11 @@ import { runBulk } from './bulk.js';
 import { checkCodex, generateText } from './codex.js';
 import { loadJobs, loadTemplate } from './input.js';
 
-const HELP = `god-tibo-text (gtt) - bulk text generation through Codex CLI
+const HELP = `codex-text - bulk text generation through Codex CLI
 
 Usage:
-  gtt --prompt "Write a product description" [--output result.txt]
-  gtt --input jobs.jsonl [--template-file prompt.md] [options]
+  codex-text --prompt "Write a product description" [--output result.txt]
+  codex-text --input jobs.jsonl [--template-file prompt.md] [options]
 
 Input formats:
   .txt                 one prompt per non-empty line
@@ -178,6 +178,6 @@ async function main() {
 }
 
 main().catch((error) => {
-  process.stderr.write(`gtt: ${error.message}\n`);
+  process.stderr.write(`codex-text: ${error.message}\n`);
   process.exitCode = 1;
 });

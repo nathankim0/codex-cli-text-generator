@@ -107,7 +107,7 @@ export async function generateText({
 } = {}) {
   if (!prompt?.trim()) throw new Error('Prompt is required.');
 
-  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'god-tibo-text-'));
+  const tempDir = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-text-'));
   const outputPath = path.join(tempDir, 'last-message.txt');
   const args = [
     'exec',

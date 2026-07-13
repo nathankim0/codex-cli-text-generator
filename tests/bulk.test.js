@@ -7,7 +7,7 @@ import test from 'node:test';
 import { runBulk } from '../src/bulk.js';
 
 test('runBulk retries failures and resumes successful IDs', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gtt-bulk-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-text-bulk-'));
   const outputDir = path.join(dir, 'text');
   const resultsPath = path.join(dir, 'results.jsonl');
   const calls = new Map();
@@ -57,7 +57,7 @@ test('runBulk retries failures and resumes successful IDs', async () => {
 });
 
 test('runBulk defers work and halts when Codex usage is exhausted', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gtt-quota-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-text-quota-'));
   const error = new Error("You've hit your usage limit. Try again later.");
   error.code = 'CODEX_USAGE_LIMIT';
   error.resetAt = '2026-07-14T00:00:00.000Z';

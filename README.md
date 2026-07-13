@@ -1,27 +1,30 @@
-# god-tibo-text
+<p align="center">
+  <img src="./assets/hero.png" alt="A command-line text factory processing prompts in parallel" width="100%">
+</p>
 
-Bulk text generation through the official Codex CLI and your existing ChatGPT
-login. No OpenAI API key is required.
+<h1 align="center">Codex CLI Text Generator</h1>
 
-This project is inspired by
-[`god-tibo-imagen`](https://github.com/NomaDamas/god-tibo-imagen), but uses the
-documented `codex exec` command instead of a private ChatGPT backend endpoint.
+<p align="center">Resumable bulk text generation through the official Codex CLI and your existing ChatGPT login.</p>
 
-## Why
+<p align="center">
+  <a href="./README.md"><img src="https://img.shields.io/badge/README-English-111827?style=for-the-badge" alt="English README"></a>
+  <a href="./README.ko.md"><img src="https://img.shields.io/badge/README-%ED%95%9C%EA%B5%AD%EC%96%B4-0F766E?style=for-the-badge" alt="한국어 README"></a>
+</p>
 
-`gtt` turns a file of prompts or structured records into resumable Codex jobs:
+No OpenAI API key is required. `codex-text` uses the ChatGPT login already
+configured by `codex login` and runs the documented `codex exec` command.
 
-- uses the ChatGPT login already configured by `codex login`
-- reads TXT, JSON, JSONL/NDJSON, and CSV
-- renders `{{field}}` prompt templates
-- runs jobs concurrently with retries and per-job timeouts
-- divides large runs into rate-limit-friendly batches with a configurable pause
-- writes one output file per item
-- records an append-only JSONL checkpoint and resumes completed IDs
-- pauses new work when available system memory is too low
-- recognizes Codex 5-hour/weekly usage exhaustion and exits resumably
-- runs every job in an isolated temporary directory with a read-only sandbox
-- uses ephemeral Codex sessions so bulk jobs do not fill session history
+## What it handles
+
+- TXT, JSON, JSONL/NDJSON, and CSV input
+- `{{field}}` prompt templates for structured records
+- concurrent workers, retries, timeouts, and configurable batches
+- one atomic output file per item
+- append-only JSONL checkpoints with automatic resume
+- prompt/model/profile/schema fingerprints to detect changed jobs
+- macOS and Linux available-memory guards
+- Codex 5-hour and weekly usage-limit detection with deferred resume
+- isolated temporary directories, read-only sandboxes, and ephemeral sessions
 
 ## Requirements
 
@@ -37,22 +40,22 @@ codex login status
 ## Install
 
 ```bash
-npm install -g god-tibo-text
+npm install -g codex-cli-text-generator
 ```
 
 For local development:
 
 ```bash
-git clone https://github.com/nathankim0/god-tibo-text.git
-cd god-tibo-text
+git clone https://github.com/nathankim0/codex-cli-text-generator.git
+cd codex-cli-text-generator
 npm link
 ```
 
 ## Single prompt
 
 ```bash
-gtt --prompt "Write a concise release note for a calendar app."
-gtt --prompt "Return a JSON object with title and summary." \
+codex-text --prompt "Write a concise release note for a calendar app."
+codex-text --prompt "Return a JSON object with title and summary." \
   --schema ./examples/article.schema.json \
   --output ./article.json
 ```
@@ -62,7 +65,7 @@ gtt --prompt "Return a JSON object with title and summary." \
 Plain text uses one non-empty line per job:
 
 ```bash
-gtt --input prompts.txt --concurrency 3
+codex-text --input prompts.txt --concurrency 3
 ```
 
 JSONL can provide stable IDs and prompts:
@@ -73,7 +76,7 @@ JSONL can provide stable IDs and prompts:
 ```
 
 ```bash
-gtt --input jobs.jsonl --output-dir output/emails
+codex-text --input jobs.jsonl --output-dir output/emails
 ```
 
 Structured records can be combined with a template. Given `products.csv`:
@@ -96,7 +99,7 @@ Return only the finished description.
 Run:
 
 ```bash
-gtt --input products.csv \
+codex-text --input products.csv \
   --template-file product-prompt.md \
   --output-dir output/descriptions \
   --results output/descriptions.jsonl \
@@ -112,71 +115,66 @@ The results JSONL file is an append-only checkpoint. A later invocation skips
 IDs that already have a successful record with the same prompt fingerprint:
 
 ```bash
-gtt --input jobs.jsonl
+codex-text --input jobs.jsonl
 # interrupted after 40 jobs
 
-gtt --input jobs.jsonl
+codex-text --input jobs.jsonl
 # resumes with job 41
 ```
 
 Use `--no-resume` to run every item again. If an existing ID's prompt, model,
 profile, or schema path changes, it is regenerated automatically. Keep IDs
-unique and stable across runs; generated output filenames are based on those
-IDs. Prompt text itself is not stored in the checkpoint.
+unique and stable across runs. Prompt text itself is not stored in checkpoints.
 
 ## Options
 
 ```text
---model <model>         Codex model override
---profile <name>        Codex config profile
---schema <file>         JSON Schema for structured output
---concurrency <n>       parallel Codex processes (default: 2)
---retries <n>           retries after failure (default: 2)
---batch-size <n>        jobs per batch (default: 20)
---batch-delay <seconds> pause between batches (default: 5)
---min-free-memory <MiB> pause below available memory (default: 1024)
+--model <model>           Codex model override
+--profile <name>          Codex config profile
+--schema <file>           JSON Schema for structured output
+--concurrency <n>         parallel Codex processes (default: 2)
+--retries <n>             retries after failure (default: 2)
+--batch-size <n>          jobs per batch (default: 20)
+--batch-delay <seconds>   pause between batches (default: 5)
+--min-free-memory <MiB>   pause below available memory (default: 1024)
 --memory-per-worker <MiB> reserve per active job (default: 512)
---memory-poll <seconds> memory recheck interval (default: 15)
---timeout <seconds>     per-job timeout (default: 300)
---no-resume             rerun successful IDs
---extension <ext>       output file extension (default: txt)
---quiet                 hide per-job progress
+--memory-poll <seconds>   memory recheck interval (default: 15)
+--timeout <seconds>       per-job timeout (default: 300)
+--no-resume               rerun successful IDs
+--extension <ext>         output file extension (default: txt)
+--quiet                   hide per-job progress
 ```
 
-Run `gtt --help` for the complete CLI reference.
+Run `codex-text --help` for the complete CLI reference.
 
-## Cost and limits
+## Cost, memory, and usage limits
 
-`gtt` does not set or read `OPENAI_API_KEY`. Authentication and usage follow
-the Codex CLI account currently shown by `codex login status`. Your ChatGPT plan
-limits still apply. High concurrency can hit those limits quickly, so start
-with the default of two workers.
+`codex-text` does not set or read `OPENAI_API_KEY`. Authentication and usage
+follow the account shown by `codex login status`. Your ChatGPT plan limits still
+apply, so begin with the default two workers.
 
-When Codex reports that the 5-hour or weekly usage limit is exhausted, `gtt`
-does not burn through normal retries. The affected item is checkpointed as
-`deferred`, no new jobs are started, and the process exits with status `2`.
-Run the same command after the reported reset time; successful items are
-skipped and deferred/unstarted items continue automatically.
+When Codex reports that the 5-hour or weekly limit is exhausted, the affected
+item is checkpointed as `deferred`, new work stops, and the process exits with
+status `2`. Run the same command after reset; completed items are skipped and
+deferred or unstarted items continue automatically.
 
-Before each Codex process starts, the memory guard checks OS-available memory.
-On macOS it includes free, inactive, speculative, and purgeable VM pages; on
-Linux it uses `MemAvailable`. It waits instead of launching when available
-memory is below the configured floor plus a reservation for active workers.
-Use `--min-free-memory 0 --memory-per-worker 0` to disable this protection.
+Before launching each process, the memory guard checks OS-available memory. On
+macOS it includes free, inactive, speculative, and purgeable VM pages; on Linux
+it uses `MemAvailable`. It waits below the configured floor plus the active
+worker reservation. Use `--min-free-memory 0 --memory-per-worker 0` to disable it.
 
 ## Security
 
-- Prompts are passed to `codex exec` over stdin, not command-line arguments.
+- Prompts go to `codex exec` over stdin, not command-line arguments.
 - Jobs run under `--sandbox read-only` in a new empty temporary directory.
-- Sessions use `--ephemeral`.
-- The CLI does not read `~/.codex/auth.json` itself.
-- Output and checkpoint files may contain sensitive generated content; protect
-  them accordingly.
+- Sessions use `--ephemeral` and do not fill Codex session history.
+- The CLI never reads `~/.codex/auth.json` directly.
+- Protect output and checkpoint files if generated content is sensitive.
 
 ## Library API
 
 ```javascript
-import { checkCodex, generateText, loadJobs, runBulk } from 'god-tibo-text';
+import { checkCodex, generateText, loadJobs, runBulk } from 'codex-cli-text-generator';
 
 await checkCodex();
 const jobs = await loadJobs('./jobs.jsonl');

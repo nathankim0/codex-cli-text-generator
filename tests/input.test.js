@@ -18,7 +18,7 @@ test('CSV parser supports commas and escaped quotes', () => {
 });
 
 test('loadJobs renders a JSONL template', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gtt-input-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'codex-text-input-'));
   const input = path.join(dir, 'jobs.jsonl');
   await fs.writeFile(input, '{"id":"a","topic":"batching"}\n');
   const jobs = await loadJobs(input, { template: 'Write about {{topic}}.' });
