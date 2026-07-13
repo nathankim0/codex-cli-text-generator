@@ -1,0 +1,43 @@
+{
+  "name": "god-tibo-text",
+  "version": "0.1.0",
+  "description": "Bulk text generation through Codex CLI and your existing ChatGPT login",
+  "author": "Nathan Kim",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nathankim0/god-tibo-text.git"
+  },
+  "homepage": "https://github.com/nathankim0/god-tibo-text#readme",
+  "bugs": {
+    "url": "https://github.com/nathankim0/god-tibo-text/issues"
+  },
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "bin": {
+    "gtt": "./src/cli.js"
+  },
+  "files": [
+    "src/",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "check": "node --check src/*.js && node --test",
+    "smoke": "node src/cli.js --prompt \"Write one sentence about a blue square.\""
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "codex",
+    "chatgpt",
+    "text-generation",
+    "batch",
+    "cli"
+  ],
+  "license": "MIT"
+}
