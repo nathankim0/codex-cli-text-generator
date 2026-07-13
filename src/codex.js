@@ -67,6 +67,35 @@ export async function checkCodex({ codexPath = 'codex', execImpl = runCommand } 
   };
 }
 
+function parseResetAt(message, now = new Date()) {
+  const raw = message.match(/(?:try again at|resets? at)\s+([^.,]+(?:,\s*\d{4}\s+\d{1,2}:\d{2}\s+[AP]M|\s+[AP]M)?)/i)?.[1];
+  if (!raw) return null;
+  const normalized = raw.replace(/(\d+)(st|nd|rd|th)/gi, '$1').trim();
+  const hasDate = /[A-Za-z]{3}\s+\d{1,2}/.test(normalized);
+  const candidate = hasDate
+    ? normalized
+    : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')} ${normalized}`;
+  let parsed = new Date(candidate);
+  if (!hasDate && Number.isFinite(parsed.getTime()) && parsed <= now) {
+    parsed = new Date(parsed.getTime() + 24 * 60 * 60 * 1000);
+  }
+  return Number.isFinite(parsed.getTime()) ? parsed.toISOString() : null;
+}
+
+function isUsageLimitMessage(message) {
+  return /you(?:'|’)ve hit your usage limit|usage_limit_reached|usage limit reached|workspace is out of credits|credits depleted/i.test(message);
+}
+
+function classifyCodexError(error) {
+  const message = [error.message, error.stdout, error.stderr].filter(Boolean).join('\n');
+  if (!isUsageLimitMessage(message)) return error;
+  const limitError = new Error(message.trim());
+  limitError.code = 'CODEX_USAGE_LIMIT';
+  limitError.resetAt = parseResetAt(message);
+  limitError.cause = error;
+  return limitError;
+}
+
 export async function generateText({
   prompt,
   model,
@@ -99,7 +128,12 @@ export async function generateText({
   ];
 
   try {
-    const run = await execImpl(codexPath, args, { input: prompt, timeoutMs });
+    let run;
+    try {
+      run = await execImpl(codexPath, args, { input: prompt, timeoutMs });
+    } catch (error) {
+      throw classifyCodexError(error);
+    }
     const text = await fs.readFile(outputPath, 'utf8').catch(() => '');
     if (!text.trim()) {
       const error = new Error('Codex completed without a final text response.');
@@ -116,3 +150,5 @@ export async function generateText({
     await fs.rm(tempDir, { recursive: true, force: true });
   }
 }
+
+export const codexInternals = { parseResetAt, isUsageLimitMessage, classifyCodexError };

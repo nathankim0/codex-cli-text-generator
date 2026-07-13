@@ -32,11 +32,14 @@ test('runBulk retries failures and resumes successful IDs', async () => {
     quiet: true,
     generateImpl,
   });
-  assert.deepEqual(first, { total: 2, skipped: 0, succeeded: 2, failed: 0 });
+  assert.equal(first.succeeded, 2);
+  assert.equal(first.failed, 0);
+  assert.equal(first.halted, false);
   assert.equal(await fs.readFile(path.join(outputDir, 'retry.txt'), 'utf8'), 'done:retry\n');
 
   const second = await runBulk({ jobs, outputDir, resultsPath, retries: 1, quiet: true, generateImpl });
-  assert.deepEqual(second, { total: 2, skipped: 2, succeeded: 0, failed: 0 });
+  assert.equal(second.skipped, 2);
+  assert.equal(second.succeeded, 0);
   assert.equal(calls.get('first'), 1);
 
   const changed = await runBulk({
@@ -47,8 +50,34 @@ test('runBulk retries failures and resumes successful IDs', async () => {
     quiet: true,
     generateImpl,
   });
-  assert.deepEqual(changed, { total: 2, skipped: 1, succeeded: 1, failed: 0 });
+  assert.equal(changed.skipped, 1);
+  assert.equal(changed.succeeded, 1);
   assert.equal(calls.get('changed'), 1);
+  await fs.rm(dir, { recursive: true, force: true });
+});
+
+test('runBulk defers work and halts when Codex usage is exhausted', async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'gtt-quota-'));
+  const error = new Error("You've hit your usage limit. Try again later.");
+  error.code = 'CODEX_USAGE_LIMIT';
+  error.resetAt = '2026-07-14T00:00:00.000Z';
+  const summary = await runBulk({
+    jobs: [{ id: 'a', prompt: 'one' }, { id: 'b', prompt: 'two' }],
+    outputDir: path.join(dir, 'text'),
+    resultsPath: path.join(dir, 'results.jsonl'),
+    concurrency: 1,
+    quiet: true,
+    generateImpl: async () => { throw error; },
+    memoryGuardImpl: { acquire: async () => async () => {} },
+  });
+
+  assert.equal(summary.halted, true);
+  assert.equal(summary.haltReason, 'usage_limit');
+  assert.equal(summary.deferred, 1);
+  assert.equal(summary.remaining, 1);
+  assert.equal(summary.resetAt, '2026-07-14T00:00:00.000Z');
+  const checkpoint = await fs.readFile(path.join(dir, 'results.jsonl'), 'utf8');
+  assert.match(checkpoint, /"status":"deferred"/);
   await fs.rm(dir, { recursive: true, force: true });
 });
 

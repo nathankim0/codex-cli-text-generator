@@ -4,7 +4,7 @@ import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { checkCodex, generateText } from '../src/codex.js';
+import { checkCodex, codexInternals, generateText } from '../src/codex.js';
 
 test('checkCodex requires ChatGPT login', async () => {
   const execImpl = async (_file, args) => args[0] === '--version'
@@ -12,6 +12,24 @@ test('checkCodex requires ChatGPT login', async () => {
     : { stdout: 'Logged in using ChatGPT', stderr: '' };
   const result = await checkCodex({ execImpl });
   assert.match(result.version, /1.0.0/);
+});
+
+test('generateText classifies Codex usage limits without retrying them', async () => {
+  const execImpl = async () => {
+    const error = new Error("You've hit your usage limit. Try again at Jul 14th, 2026 3:00 PM.");
+    error.stderr = error.message;
+    throw error;
+  };
+  await assert.rejects(
+    generateText({ prompt: 'work', execImpl }),
+    (error) => error.code === 'CODEX_USAGE_LIMIT' && error.resetAt !== null,
+  );
+});
+
+test('usage-limit matching covers machine and human readable errors', () => {
+  assert.equal(codexInternals.isUsageLimitMessage('type=usage_limit_reached'), true);
+  assert.equal(codexInternals.isUsageLimitMessage("You've hit your usage limit"), true);
+  assert.equal(codexInternals.isUsageLimitMessage('temporary network failure'), false);
 });
 
 test('generateText passes the prompt over stdin and reads final output', async () => {

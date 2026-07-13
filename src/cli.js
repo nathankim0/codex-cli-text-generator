@@ -30,6 +30,9 @@ Bulk options:
   --retries <n>              Retries after a failure (default: 2)
   --batch-size <n>           Jobs per batch (default: 20)
   --batch-delay <seconds>    Pause between batches (default: 5)
+  --min-free-memory <MiB>    Pause below available memory (default: 1024)
+  --memory-per-worker <MiB>  Reserve per active job (default: 512)
+  --memory-poll <seconds>    Memory recheck interval (default: 15)
   --no-resume                Run successful IDs again
   --extension <ext>          Output extension (default: txt)
 
@@ -52,6 +55,9 @@ function parseArgs(argv) {
     retries: 2,
     batchSize: 20,
     batchDelay: 5,
+    minFreeMemory: 1024,
+    memoryPerWorker: 512,
+    memoryPoll: 15,
     resume: true,
     timeout: 300,
     extension: 'txt',
@@ -61,6 +67,8 @@ function parseArgs(argv) {
     ['--template-file', 'templateFile'], ['--output-dir', 'outputDir'], ['--results', 'results'],
     ['--concurrency', 'concurrency'], ['--retries', 'retries'], ['--extension', 'extension'],
     ['--batch-size', 'batchSize'], ['--batch-delay', 'batchDelay'],
+    ['--min-free-memory', 'minFreeMemory'], ['--memory-per-worker', 'memoryPerWorker'],
+    ['--memory-poll', 'memoryPoll'],
     ['--model', 'model'], ['--profile', 'profile'], ['--schema', 'schema'],
     ['--timeout', 'timeout'], ['--codex', 'codexPath'],
   ]);
@@ -82,11 +90,17 @@ function parseArgs(argv) {
   options.retries = Number(options.retries);
   options.batchSize = Number(options.batchSize);
   options.batchDelayMs = Number(options.batchDelay) * 1_000;
+  options.minFreeMemoryMb = Number(options.minFreeMemory);
+  options.memoryPerWorkerMb = Number(options.memoryPerWorker);
+  options.memoryPollMs = Number(options.memoryPoll) * 1_000;
   options.timeoutMs = Number(options.timeout) * 1_000;
   if (!Number.isInteger(options.concurrency) || options.concurrency < 1) throw new Error('--concurrency must be a positive integer.');
   if (!Number.isInteger(options.retries) || options.retries < 0) throw new Error('--retries must be a non-negative integer.');
   if (!Number.isInteger(options.batchSize) || options.batchSize < 1) throw new Error('--batch-size must be a positive integer.');
   if (!Number.isFinite(options.batchDelayMs) || options.batchDelayMs < 0) throw new Error('--batch-delay must be zero or a positive number.');
+  if (!Number.isFinite(options.minFreeMemoryMb) || options.minFreeMemoryMb < 0) throw new Error('--min-free-memory must be zero or a positive number.');
+  if (!Number.isFinite(options.memoryPerWorkerMb) || options.memoryPerWorkerMb < 0) throw new Error('--memory-per-worker must be zero or a positive number.');
+  if (!Number.isFinite(options.memoryPollMs) || options.memoryPollMs <= 0) throw new Error('--memory-poll must be a positive number.');
   if (!Number.isFinite(options.timeoutMs) || options.timeoutMs <= 0) throw new Error('--timeout must be a positive number.');
   if (!/^[a-zA-Z0-9]+$/.test(options.extension)) throw new Error('--extension must contain only letters and numbers.');
   return options;
@@ -142,13 +156,25 @@ async function main() {
     retries: options.retries,
     batchSize: options.batchSize,
     batchDelayMs: options.batchDelayMs,
+    minFreeMemoryMb: options.minFreeMemoryMb,
+    memoryPerWorkerMb: options.memoryPerWorkerMb,
+    memoryPollMs: options.memoryPollMs,
     resume: options.resume,
     extension: options.extension,
     quiet: options.quiet,
     generateOptions,
   });
-  process.stderr.write(`done: ${summary.succeeded} succeeded, ${summary.failed} failed, ${summary.skipped} skipped\n`);
-  if (summary.failed > 0) process.exitCode = 1;
+  process.stderr.write(
+    `done: ${summary.succeeded} succeeded, ${summary.failed} failed, ${summary.deferred} deferred, `
+      + `${summary.remaining} remaining, ${summary.skipped} skipped\n`,
+  );
+  if (summary.halted) {
+    const reset = summary.resetAt ? ` Reset: ${summary.resetAt}.` : '';
+    process.stderr.write(`Codex usage limit reached.${reset} Run the same command after the limit resets.\n`);
+    process.exitCode = 2;
+  } else if (summary.failed > 0) {
+    process.exitCode = 1;
+  }
 }
 
 main().catch((error) => {

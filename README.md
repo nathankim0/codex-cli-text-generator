@@ -18,6 +18,8 @@ documented `codex exec` command instead of a private ChatGPT backend endpoint.
 - divides large runs into rate-limit-friendly batches with a configurable pause
 - writes one output file per item
 - records an append-only JSONL checkpoint and resumes completed IDs
+- pauses new work when available system memory is too low
+- recognizes Codex 5-hour/weekly usage exhaustion and exits resumably
 - runs every job in an isolated temporary directory with a read-only sandbox
 - uses ephemeral Codex sessions so bulk jobs do not fill session history
 
@@ -132,6 +134,9 @@ IDs. Prompt text itself is not stored in the checkpoint.
 --retries <n>           retries after failure (default: 2)
 --batch-size <n>        jobs per batch (default: 20)
 --batch-delay <seconds> pause between batches (default: 5)
+--min-free-memory <MiB> pause below available memory (default: 1024)
+--memory-per-worker <MiB> reserve per active job (default: 512)
+--memory-poll <seconds> memory recheck interval (default: 15)
 --timeout <seconds>     per-job timeout (default: 300)
 --no-resume             rerun successful IDs
 --extension <ext>       output file extension (default: txt)
@@ -146,6 +151,18 @@ Run `gtt --help` for the complete CLI reference.
 the Codex CLI account currently shown by `codex login status`. Your ChatGPT plan
 limits still apply. High concurrency can hit those limits quickly, so start
 with the default of two workers.
+
+When Codex reports that the 5-hour or weekly usage limit is exhausted, `gtt`
+does not burn through normal retries. The affected item is checkpointed as
+`deferred`, no new jobs are started, and the process exits with status `2`.
+Run the same command after the reported reset time; successful items are
+skipped and deferred/unstarted items continue automatically.
+
+Before each Codex process starts, the memory guard checks OS-available memory.
+On macOS it includes free, inactive, speculative, and purgeable VM pages; on
+Linux it uses `MemAvailable`. It waits instead of launching when available
+memory is below the configured floor plus a reservation for active workers.
+Use `--min-free-memory 0 --memory-per-worker 0` to disable this protection.
 
 ## Security
 
