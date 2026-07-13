@@ -40,7 +40,7 @@ codex login status
 ## Install
 
 ```bash
-npm install -g codex-cli-text-generator
+npm install -g github:nathankim0/codex-cli-text-generator
 ```
 
 For local development:

@@ -40,7 +40,7 @@ codex login status
 ## 설치
 
 ```bash
-npm install -g codex-cli-text-generator
+npm install -g github:nathankim0/codex-cli-text-generator
 ```
 
 로컬에서 개발할 때:
